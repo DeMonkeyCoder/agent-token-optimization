@@ -76,14 +76,15 @@ reply with no invocation, because the earlier wording only pinned the level and
 could be read as "if caveman is invoked, use lite"; a reviewer on a second
 machine read it that way.
 
-**Why the caveman config file is gone.** `~/.config/caveman/config.json` with
-`defaultMode: lite` is read by exactly one thing: the caveman plugin's own
-SessionStart hook (`src/hooks/caveman-activate.js`), which resolves the mode
-from `CAVEMAN_DEFAULT_MODE`, then a repo-local `.caveman/config.json`, then the
-user file, and falls back to `full`. That hook exists only when the full plugin
-is installed, which the setup forbids. On a four-skill install nothing reads
-the file, and its presence invited a false verification: "the level is lite, I
-checked the config". The step was removed rather than gated.
+**Why the caveman config file is not the switch.** Caveman's plugin configuration
+reader resolves `defaultMode` from the environment, repository, and user config;
+the user path honors `XDG_CONFIG_HOME`, otherwise Windows `APPDATA` or
+`~/.config`.[2] That mechanism does not activate the fork's lite rules in the
+four-skill setup. Its presence invited false verification: "the level is lite,
+I checked the config". Creation was removed. An existing file is retired only
+after backup, with confirmed setup origin, only the old `defaultMode: lite`
+setting, and no enabled Caveman integration using it. Unknown consumers or
+provenance mean preserve and report, not deletion across another agent's setup.
 
 **Why the installer is not used.** `npx skills add JuliusBrussee/caveman` has no
 ref argument and resolves to the repository head. On one machine it had
@@ -324,53 +325,92 @@ opt-in; on the builds tested it was the default. A hook removed from Cursor's
 `hooks.json` but left in Claude Code's settings is still live in Cursor, and
 Cursor's UI will not show it. The same shape appeared on the reviewed machine
 in a different pair: Claude Code's rule file had leaked into a Hermes profile
-through a home-rooted path. This is why `SETUP.md` orders the Claude Code
-cleanup before Cursor's and why the verification step reads what reached the
+through a home-rooted path. This is why the Cursor notes inspect inherited Claude
+configuration and why the verification step reads what reached the
 model rather than which file was edited or what a settings screen reports.
 
-**Plugin registries are a config layer of their own.** Claude Code keeps
-`enabledPlugins` in `settings.json` and again in
-`plugins/installed_plugins.json`, and the two can disagree; on one machine
+**Plugin records can disagree.** On an observed Claude Code installation,
+`enabledPlugins` appeared in both `settings.json` and
+`plugins/installed_plugins.json`; on that machine
 Context Mode was `false` in the first and `true` in the second, with the
-marketplace still listed so an update could reinstall it. Which layer wins at
+marketplace still listed. Which layer wins at
 runtime was not established by a controlled test (the plugin's skills were
-absent from the session, which suggests the settings file won). The setup now
-makes both layers agree instead of relying on precedence.
+absent from the session, which suggests the settings file won). This is not a
+universal registry schema or proof of later re-enablement. The setup uses supported
+disable/list commands, reconciles existing conflicting flags, and leaves an
+inventory-only record alone instead of inventing enablement keys.
 
-**The wording rules govern the smallest cost line.** On the second machine the
+**Cost settings can also change capability.** On the second machine the
 settings selected a 1M-context model with elevated reasoning effort for every
-session. Context is resent every turn and reasoning tokens scale with effort,
-so one effort-level change on mechanical tasks plausibly outweighs every
-wording rule combined. The setup now has a cost-settings step. It is separate
-from the quality rules on purpose: the fork applies at every effort level, and
-lowering effort for a rename is not the same as letting a tool tell the agent
-to stop reading.
+session. This did not establish which cost line dominated or prove that lowering
+effort preserved quality. Current Claude documentation distinguishes actual token
+usage, pricing, and available capacity: its 1M window uses standard model pricing
+without a premium beyond 200K, while subscription coverage and usage-credit
+requirements vary by model and plan.[1] A larger window
+can retain more billable context before compaction, but an unused window is not a
+flat per-turn charge. Reducing it can force earlier compaction and lose needed
+context. The setup reports model, effort, and window choices and preserves them
+unless the user approves a named setting and value. The fork cannot guarantee
+equal quality at lower effort. CLI launch overrides support a temporary trial;
+interactive model/effort commands can persist defaults and need care.[1]
 
 **A setup that does not measure cannot claim savings.** Nothing in the earlier
-verify section measured tokens or quality; both checks confirmed that rules
-were present. The verify section now asks for a five-task baseline before and
-after, from the session records, so the title's two claims are checkable on
-the machine where the setup runs.
+verify section measured tokens or quality; both checks concerned rule loading.
+The baseline must be captured before the first edit, using five fixed tasks with
+written quality criteria and comparable model, effort, window, fixtures, and cache
+conditions. Native input/output, cache-read/cache-write, and reasoning categories
+are used where exposed, without double-counting. A missing baseline means
+unmeasured, not reconstructed savings. Five tasks test a local workload, not the
+universal claim of token savings without quality loss.
 
 **Self-report is a smoke test, not evidence.** The earlier verify section said
 not to ask the model about itself and then did so twice. Asking is kept as the
 quick check; the evidence is the agent's MCP list and its native session
-record.
+record. A harmless shell command and file read exercise tool hooks that a text-only
+question would miss. No calls alone does not prove no tools were available; an
+OAuth failure before assistant work proves neither loading nor absence. Inspect
+per-turn assistant model IDs and resolve aliases instead of requiring one usage
+summary key: helper-model accounting is not necessarily main-answer fallback.
 
-**A model may decline part of the setup.** Running the setup with a capable
-model on a fresh Windows machine, the model completed every config edit and
+**A model may decline part of the setup.** In an earlier Windows run,
+the model reported completing config edits and
 refused the one step that ran a third-party installer, on its own judgment,
-and said so. A weaker model had earlier stopped partway without saying which
+and said so. Another run had stopped partway without saying which
 steps were skipped. The setup now avoids installers entirely (clone at the
 pin, copy four directories) and the per-agent notes tell the executing agent
 to name any step it declines rather than skip it silently.
 
 ## What was and was not tested
 
-Claude Code, Codex, Grok CLI, Hermes, the Cursor CLI, and the Cursor desktop
-IDE were tested on a working machine: every removal was followed by a
-fresh-session probe and, where the agent keeps one, inspection of the native
-session record.
+Earlier deployments were probed on Claude Code, Codex, Grok CLI, Hermes, the
+Cursor CLI, and the Cursor desktop IDE, using fresh sessions and native records
+where available. Those historical probes do not certify every later revision of
+these installation notes or establish end-to-end quality and cost improvements.
+
+**Latest Windows follow-up (2026-09-10).** User-supplied screenshots report the
+updated setup applied, the four copied helpers plus an unrelated `find-skills`
+retained, stale memories repaired, and a legacy Caveman config left in place.
+They also report changes from `opus[1m]` to `opus` and lowered effort. Runtime
+checks did not reach assistant work because OAuth expired; there was no pre-change
+benchmark. This is evidence about the reported deployment and its blocked checks,
+not independent access to the Windows filesystem or proof of savings. It prompted
+the before-edit baseline, conditional cleanup, closing memory repair, and explicit
+cost-setting consent in the revised instructions. Two reported typos were absent
+from the current repository and were not edited there.
+
+**Hermes template test.** On Hermes v0.20.4, local source `ad1ee7a3`, the old
+`max_chars=6000` example raised `ValueError: system prompt section max_chars must be between 1 and 4000`.
+An isolated test of the corrected `4000` example registered
+and rendered the entire 3789-character ASCII fork (3788 after trimming its final
+newline). Source inspection shows overlong content is skipped, not truncated.
+The verification therefore checks the full fork, not only its first sentence.
+The plugin API page[3] was consulted; the cap was established from installed source.
+
+**Instruction-file preservation.** Existing unrelated global rules must not be
+replaced by a one-line import. Claude's import can be added once; Codex's current
+documented discovery reads the first nonempty global `AGENTS.override.md` or
+`AGENTS.md`.[4] Its notes now embed the actual guidance in that active file rather
+than treating an unverified `@path` reference as proof of automatic loading.
 
 For Cursor, three documentation claims were tested directly. Two held: a plain
 `.md` in `.cursor/rules/` is ignored while the same content as an
@@ -384,7 +424,7 @@ One thing was not tested: none of the three tools had been installed into
 Cursor on this machine, so their removal steps are from each tool's own install
 instructions rather than from undoing a real install.
 
-A free Cursor plan cannot pin a model; the answering model is recorded in the
+The tested free Cursor plan could not pin a model; the answering model is recorded in the
 native chat store and was `cursor-grok-4.5-high` for the CLI probes. The IDE
 showed `Cursor Grok 4.6 Medium` in its composer for its probe.
 
@@ -404,8 +444,10 @@ repository containing one exact symbol and one plausible-but-nonexistent name;
 a verification task whose log has one failure, one skip, one strict xfail, one
 decisive line past any per-file cap, and a nonzero exit.
 
-**Runs.** Three per task per arm. A run whose model-usage record shows more
-than one model is void.
+**Runs.** Three per task per arm. Keep main-answer models identical across arms,
+checking native assistant attribution and resolving aliases. Separate helper usage
+from main-model fallback. Exclude main-model substitutions from the comparison;
+unavailable authorship metadata makes the model-controlled result unverified.
 
 **Scoring.** Requirement coverage against the written list with a four-state
 audit so "proven manually" never scores as shipped; a separate confident-wrong
@@ -429,3 +471,13 @@ text and first-hand probes, and its verdict on that text stands whether or not
 any of the three tools was involved in that specific incident. The
 recommendation to turn them off rests on what they instruct the agent to do,
 not on proof that they did it.
+
+## Sources
+
+Vendor pages and the pinned source below were consulted on 2026-09-10.
+Version-dependent claims must be rechecked against the installed agent and current docs.
+
+[1] https://code.claude.com/docs/en/model-config
+[2] https://raw.githubusercontent.com/JuliusBrussee/caveman/3b74643f4d910f496babd4e634b1ba7168816f14/src/hooks/caveman-config.js
+[3] https://hermes-agent.nousresearch.com/docs/developer-guide/plugins
+[4] https://developers.openai.com/codex/guides/agents-md

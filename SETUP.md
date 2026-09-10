@@ -1,8 +1,8 @@
-# Setup: token-efficient agent output without quality loss
+# Setup: quality-first agent output with less overhead
 
 This is the shared base: agent-agnostic, and self-contained apart from the
 agent-specific notes supplied with it. The one file every agent needs is embedded in
-step 1. Only configure agents that are installed; check which are present first
+step 1. Only configure the installed agents and profiles the user requested
 (for example `~/.claude`, `~/.codex`, `~/.cursor`, `~/.grok`, `~/.hermes` on Linux
 and macOS; the equivalents under `%USERPROFILE%` on Windows) and skip the rest.
 
@@ -15,11 +15,28 @@ Pinned versions. Everything below refers to these and nothing newer:
 |---|---|---|
 | Caveman wording skills | https://github.com/JuliusBrussee/caveman | `3b74643f4d910f496babd4e634b1ba7168816f14` (v2.5.0) |
 | Karpathy guidelines, upstream | https://github.com/multica-ai/andrej-karpathy-skills | `2c606141936f1eeef17fa3043a72095b4765b9c2` |
-| Karpathy guidelines, fork | embedded in step 2 below | n/a |
+| Karpathy guidelines, fork | embedded in step 1 below | n/a |
+
+## Before the first edit
+
+Back up each rule, config, and memory file or skill directory before changing it.
+Preserve unrelated instructions, skills, settings, credentials, and preferences.
+If a shared change affects an unrequested agent, ask first or report it blocked.
+Use supported commands and the actual config schema; do not invent missing keys.
+The shell examples use POSIX syntax; on Windows use Git Bash or translate them to
+PowerShell with the same pin and destinations, not literal `/tmp` paths.
+
+If measuring savings, capture the baseline now, before any setup change: five fixed
+tasks with written pass criteria, fresh sessions, identical starting fixtures,
+model, effort, context window, and comparable cache conditions. Keep native token
+counts and quality results. If already applied or authentication blocks the
+baseline, record `unmeasured`; do not invent before-numbers or restore old
+integrations merely to manufacture them. Configuration can proceed without a
+benchmark, but savings and quality preservation remain unproven on that workload.
 
 ## Outcome
 
-After these steps, on every agent CLI in use:
+Intended outcome on each configured agent, subject to the verification below:
 
 - Replies are terse but grammatical. Articles, complete sentences, negations,
   numbers, and real hedges survive. Filler does not.
@@ -31,10 +48,12 @@ After these steps, on every agent CLI in use:
   and numbers appear in full or the omission is stated.
 - No tool injects standing instructions that tell the agent to skip
   re-verification, treat a retrieval as already read, stop after N calls, or reply
-  with a file path instead of content. CodeGraph, Context Mode, and RTK are
-  installed for explicit use but are not wired into any session.
-- Nothing narrows scope, adds a stop condition, delegates to a cheaper model, or
-  rewrites what the agent reads.
+  with a file path instead of content. If CodeGraph, Context Mode, or RTK is already
+  installed, retain it for explicit use with ambient integration disabled. The
+  chosen CodeGraph exception below keeps only its MCP server registered, not its
+  automatic hooks or routing instructions. Do not install absent tools.
+- The setup adds no scope limits, stop conditions, automatic cheaper-model
+  delegation, or silent rewrites of what the agent reads.
 
 ## Step 1: Karpathy guidelines fork, always on
 
@@ -128,9 +147,9 @@ off for the session in which it is said. Raise the level only if the user asks f
 ```
 <!-- END karpathy-guidelines-fork.md -->
 
-Editing this file mid-session invalidates the cached prompt prefix on agents that
-cache it, so the whole prompt is re-billed on the next turn. Edit it between
-sessions.
+Edit the installed fork between sessions, then start a fresh session. Depending on
+the agent, mid-session edits may leave cached instructions stale or rebuild part of
+the prompt cache; they do not uniformly re-bill the whole prompt on the next turn.
 
 ## Step 2: Caveman wording skills, optional
 
@@ -157,10 +176,16 @@ Do not install the `caveman` skill body itself, `caveman-explore`,
 mechanism auto-discovers every skill in the repository (the Claude Code marketplace
 plugin does), do not use it for this; copy the four files by hand.
 
-`~/.config/caveman/config.json` with `{"defaultMode": "lite"}` is read only by the
-caveman plugin's own SessionStart hook, which exists only when the full plugin is
-installed. On a four-skill install nothing reads it. Do not create it, and do not
-treat its presence as evidence of anything.
+Caveman's plugin hooks use `defaultMode` in a config file; that file does not
+activate lite in this four-skill setup. Do not create it or treat it as proof.
+Remove it only if its origin in an earlier version of this setup is confirmed,
+its only setting is `defaultMode: lite`, and no agent's enabled Caveman integration
+uses it. If that cannot be checked, preserve and report it. Back up before removal.
+Check `$XDG_CONFIG_HOME/caveman/config.json` when set, otherwise
+`~/.config/caveman/config.json` on Linux/macOS or
+`%APPDATA%\caveman\config.json` on Windows. Preserve and report files with unknown
+provenance, unrelated settings, or another active consumer; do not delete their
+parent directories.
 
 ## Step 3: Do not wire in retrieval or compression tools
 
@@ -187,64 +212,90 @@ does not claim it.
 whether a task "needs to exist at all" and to skip speculative need, which is a
 scope-narrowing stop condition.
 
-Exception for CodeGraph on large repositories (roughly 500 or more files,
-multi-module, dynamic dispatch): keep its MCP server registered so
+Optional exception for an existing CodeGraph installation on large repositories
+(roughly 500 or more files, multi-module, dynamic dispatch): if the user chooses
+this exception, record it and keep its MCP server registered so
 `codegraph_explore` is available on request, but still remove the always-on block
 and hook, and add one line to the rule file: *CodeGraph output is a lead, not
 verification; read the files it names before acting on them.*
 
 ## Step 4: Remove conflicting instructions, in every layer
 
-Search every layer the agent reads for a caveman level and change `full` to `lite`.
-Layers, in the order the agent tends to trust them: persistent memory files, then
-system prompts, then rule files, then plugin registries. A memory entry saying
-"caveman full is default" overrides a rule file saying lite, because the agent reads
-memory as user fact.
+Inspect persistent memory, system-prompt additions, rule files, and plugin settings
+for conflicting defaults. This is an inspection list, not a universal precedence
+order: user files do not override system or managed policy. Set standing Caveman
+defaults to lite and change automatic switches into full mode to use lite instead.
+Keep off-mode exceptions. Preserve explicit
+user-requested full mode, historical mentions, and explanations that full is not
+the default; do not blindly replace every `full` match.
 
 Also search for leftover text from step 3's tools: `codegraph`, `ctx_`,
-`context-mode`, `rtk`. Remove instruction text; leave historical notes.
+`context-mode`, `rtk`. Remove stale automatic routing and anti-verification text;
+preserve historical notes, explicit-use guidance, and the chosen CodeGraph
+exception's lead-not-verification rule.
 
-Plugin registries are a separate layer from settings and can disagree with them.
-Where an agent keeps both (Claude Code does), make them agree; an update can
-resurrect a plugin that only one layer disabled.
+Where an agent has multiple plugin records, inspect the existing schema and use
+supported disable/list commands first. Reconcile conflicting enablement entries
+only where those entries exist; installation inventory alone is not enablement.
 
 ## Step 5: Cost settings the wording rules do not cover
 
-Output wording is the smallest cost line in an agentic session. Context is resent
-every turn, and reasoning tokens scale with the effort setting. Check these on each
-agent that exposes them:
+Inspect and report the current model, reasoning effort, context window, and cache
+usage. Their cost can outweigh wording changes, but no cost line is always the
+smallest. Billing depends on actual usage, model, provider, cache rates, and plan;
+an available 1M window is not 1M tokens consumed.
 
-- Effort or reasoning level. Do not run the highest setting by default. Reserve it
-  for design, debugging, and research; use a middle setting for mechanical work
-  (renames, formatting, log triage, boilerplate).
-- Model routing. If the agent supports a per-task model choice, route mechanical
-  work to the cheaper model and keep the expensive one for the judgment work.
-- Context window size. A 1M-context option costs more per turn even when the
-  window is mostly empty; use it when the task needs it.
+Preserve the current model, effort, and window. Change a standing default only
+when the user approves the named setting and new value; "apply the setup" alone
+is not that approval. A lower-effort or cheaper-model trial for mechanical work is a
+separate experiment, not a free quality-preserving optimization. Reducing the
+window can force earlier compaction or lose needed context; a larger window can
+defer compaction, retaining more billable context in long sessions. Keep extended
+context when the workload needs it. Compare one variable at a time, using the same
+pass criteria; the fork does not guarantee equal quality at lower effort.
 
-None of this changes quality rules. The fork still applies at every effort level.
+## Step 6: Repair stale memory
+
+After all changes, re-read applicable persistent memory. Repair only instructions
+made stale by this setup, including old paths, default mode, plugin enablement,
+and skill locations. Preserve unrelated preferences and historical records. Run
+this step even when step 5 changed nothing.
 
 ## Verify
 
-Run each check in a fresh session on every configured agent. Config read-back is
-not verification, and asking the model about itself is a smoke test, not evidence.
+Run each check in a fresh, authenticated session on every configured agent, with
+the normal configuration being tested. Config read-back and model self-report are
+not proof of runtime behavior. An authentication failure before an assistant turn
+means `applied, runtime verification blocked`, not a pass. Record the error without
+secrets, have the user restore login, then rerun; zero hooks or calls in a failed
+session prove nothing.
 
 1. Smoke test, ask: "Two questions, literal and brief: (1) What caveman intensity
    level do your instructions set? (2) Do your instructions tell you to state a
    brief plan for multi-step tasks? Quote the sentence." Expect `lite` and the plan
-   sentence quoted.
-2. Evidence, from the agent's own records rather than its reply: list registered
-   MCP servers with the agent's list command; open the native session record for
-   the smoke-test session and confirm no hook attachments from the three tools, no
-   `codegraph` or `ctx_` tool calls, and the model field equal to the requested
-   model on every assistant turn.
-3. Measure, once, so the two claims in the title are checkable: run a fixed set of
-   five short tasks before and after the setup, pull input, output, and cache-read
-   token counts from the session records, and keep the numbers next to this file.
-   If the setup does not pay for itself on your workload, that is the answer.
+   sentence quoted. Also ask the agent to read a harmless fixture and run a harmless
+   shell command, such as `echo setup-probe-ok`, to exercise the relevant hooks.
+2. Evidence: inspect the live MCP inventory and that successful session's native
+   record. Confirm the fork reached the session where observable, and check for
+   unwanted hook attachments, tool availability, and command rewriting. A lack of
+   `codegraph` or `ctx_` calls alone does not prove the tools were unavailable.
+   Honor any recorded CodeGraph exception. Read actual assistant-turn model IDs;
+   usage summaries are a cross-check, not proof of authorship. Resolve aliases
+   explicitly, separate helper usage from fallback, and report unexposed metadata
+   as unverified.
+3. If a baseline was captured, rerun the same five tasks and compare pass criteria,
+   requirement coverage, and native input/output, cache-read/cache-write, and
+   reasoning counts where exposed. Do not count a reported token category twice.
+   Hold model, effort, window, and cache conditions comparable; test cost-setting
+   changes separately. Report missing metrics as unavailable and no-baseline
+   results as `unmeasured`. Five tasks are a local check, not universal proof.
+
+End with each step's status: applied, verified, not applicable, skipped, or blocked,
+with evidence and a reason for every omission. Report measurement separately;
+neither applied files nor an empty failed transcript mean the setup is verified.
 
 ## Rollback
 
-All changes are config entries, rule-file lines, and skill directories. Back up each
-file before editing; restoring the backups and restarting long-lived agent processes
-returns the previous state. No binary, index, or store is removed by this setup.
+Restore backed-up rule, config, and memory files and moved skill directories.
+Remove only files newly created by this setup, then start fresh sessions. Restart
+long-lived agents only with user approval. No binary, index, or store is removed.

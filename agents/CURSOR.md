@@ -1,9 +1,11 @@
 # Cursor (CLI and desktop IDE)
 
-Applies the base setup. If Claude Code is installed on the same machine, clean
-it up before Cursor: Cursor runs Claude Code's hooks (see step 3). The
-CLI (`cursor-agent`) and the desktop IDE share the same rule, MCP, and hook files,
-so one pass covers both.
+Applies the base setup. If Claude Code is installed on the same machine, its hooks
+run inside Cursor (see step 3). Removing them means editing Claude Code's files:
+if Claude Code was not in the requested scope, ask first. Without approval, report
+Cursor's hook state as blocked rather than editing another agent's configuration.
+The CLI (`cursor-agent`) and the desktop IDE share the same rule, MCP, and hook
+files, so one pass covers both.
 
 ## Step 1: the fork as an always-apply rule
 
@@ -27,10 +29,12 @@ asked whether it had the fork's precedence sentence. Do not rely on a
 A project `AGENTS.md` at the repository root is the plain-markdown alternative and
 is always read.
 
-In the desktop IDE, Customize > Rules > User Rules apply to every project. The IDE's
-onboarding writes profile text there ("prefers coding workflows" and similar); read
-it and delete anything that sets a style or narrows scope. Pasting the fork's
-Output style section into User Rules covers repositories without a project rule.
+In the desktop IDE, Customize > Rules > User Rules apply to every project. Inspect
+onboarding profile text and remove only setup-related conflicts; preserve unrelated
+user preferences. Choose one carrier: project rules, which the IDE reads too, or,
+for IDE-only use, the full fork in User Rules. Do not use both, or the fork loads
+twice in the IDE. The Output style section alone does not install the guidelines.
+Verify loading on the surface you chose; do not assume IDE User Rules reach the CLI.
 
 ## Step 2: skills
 
@@ -49,9 +53,10 @@ done
 ## Step 3: hooks and MCP
 
 - `~/.cursor/mcp.json` and `<repo>/.cursor/mcp.json`: remove `codegraph` and
-  `context-mode` from `mcpServers`, or leave CodeGraph's entry for the
-  large-repository case in the base setup. On a fresh install neither file
-  exists; creating `~/.cursor/mcp.json` as `{"mcpServers": {}}` is harmless.
+  `context-mode` from `mcpServers`, keeping CodeGraph only under the user-chosen
+  existing-server exception, without automatic routing guidance/hooks. On a fresh
+  install neither file exists; creating `~/.cursor/mcp.json` as `{"mcpServers": {}}`
+  is harmless.
 - `~/.cursor/hooks.json` and `<repo>/.cursor/hooks.json`: remove any
   `beforeShellExecution` or `preToolUse` entry that runs `rtk`, and any
   `context-mode hook` entry. `{"hooks": {}}` if nothing is left.
@@ -67,7 +72,7 @@ reported "no hooks configured" while it did. The documented opt-in ("Include
 third-party Plugins, Skills, and other configs") was not a precondition on these
 builds. An RTK or Context Mode hook left in the Claude file is live in Cursor even
 when Cursor's own `hooks.json` is empty and its UI shows nothing. Clean
-`~/.claude/settings.json` first.
+`~/.claude/settings.json` first, within the consent rule above.
 
 ## Step 4: other layers
 
@@ -75,15 +80,17 @@ No persistent memory file at user level. Check User Rules (IDE) as in step 1.
 
 ## Step 5: cost settings
 
-Free plans allow `--model auto` only; named models are rejected. On paid plans, pick
-the model per session with `--model` (CLI) or the composer's model picker (IDE) and
-prefer a mid-effort variant for mechanical work. The `-high` and `-xhigh` suffixes
-on model names are the effort setting.
+The tested free plan allowed only `--model auto`; current availability can differ.
+Preserve the selected model, effort, and window unless the user approves a change.
+Use the installed CLI's model list or IDE picker for an approved trial; do not
+guess model suffixes or assume an Auto selection proves which model answered.
 
 ## Verify
 
-CLI: `cursor-agent -p --trust --mode ask --model auto --output-format json '<smoke
-test question>'`. The result carries `session_id`. Native records:
+CLI: use a fresh `cursor-agent -p` session with the current model selection and
+`--output-format json`. A text-only `--mode ask` smoke test cannot verify shell
+hooks; exercise harmless shell/read work in the normal supported tool mode too.
+The result carries `session_id`. Native records:
 
 - transcript: `~/.cursor/projects/<workspace>/agent-transcripts/<session-id>/`
 - chat store: `~/.config/cursor/chats/<workspace-hash>/<session-id>/store.db`, where

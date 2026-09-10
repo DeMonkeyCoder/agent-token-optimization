@@ -17,10 +17,15 @@ how drift starts.
 
 Grok installs skills through plugins from `~/.grok/config.toml`
 `[[marketplace.sources]]` entries, and the caveman marketplace exposes every skill
-in the repository. Prefer not to enable the `caveman` plugin. If it is enabled and
-you want the four helpers, keep the plugin but confirm the `caveman` skill body is
-not loaded in a fresh session (ask for the caveman level; if the reply says full,
-the body is loading).
+in the repository. Do not enable the full `caveman` plugin just to get four helpers.
+Use a verified four-skill-only mechanism if supported by the installed version;
+otherwise skip the optional helpers and report why. A reply saying lite does not
+prove the excluded skill body or plugin hooks cannot load later.
+
+If the full plugin is already enabled, back up `config.toml`, remove `caveman`
+from `plugins.enabled`, and report the change. Re-enable it only if the user
+explicitly prefers the full plugin over this setup's exclusion list; report that
+choice as a deviation, not a verified four-skill-only installation.
 
 ## Step 3: hooks and MCP
 
@@ -28,7 +33,8 @@ the body is loading).
 
 - `plugins.enabled`: remove `"context-mode"`.
 - `[mcp_servers.codegraph]` and `[mcp_servers.context-mode]`: set `enabled = false`
-  on each, or delete the tables. Disabling keeps re-enabling to one flag flip.
+  on each, or delete the tables. Keep CodeGraph only under the user-chosen
+  existing-server exception; its automatic hook and routing rules still go.
 - Delete the `[[hooks.PreToolUse]]` block whose command runs an RTK adapter
   (`rtk-hook.py` or similar), together with its `[[hooks.PreToolUse.hooks]]` entry.
 - `~/.grok/hooks/rtk-hook.py` and `~/.grok/hooks/rtk.json` can stay on disk; with the
@@ -44,9 +50,10 @@ plugins are the whole instruction surface.
 
 ## Step 5: cost settings
 
-`--reasoning-effort low|medium|high|xhigh` per session. There is no persistent
-default in `config.toml`; whatever wrapper or alias you use to launch Grok should not
-hard-code `xhigh`.
+Inspect reasoning defaults in the installed version and any launch wrapper.
+Preserve model, effort, and window unless the user approves a change. For an
+approved one-session trial, use a supported `--reasoning-effort` value; verify the
+accepted levels with `grok --help` rather than assuming every model supports them.
 
 ## Verify
 
@@ -55,7 +62,9 @@ plus `prompt_history.jsonl`. After a fresh `grok -p` run with a fresh
 `--session-id`:
 
 - no `"rtk ` inside any executed command (the hook would have rewritten it);
-- no `ctx_execute` or `codegraph_explore` tool names;
-- the JSON result's `modelUsage` map has one key. Grok labels its usage bucket with a
-  `-build` suffix (`grok-4.6-build` for `--model grok-4.6`); that is the same model,
-  not a substitution.
+- no unwanted `ctx_execute` or `codegraph_explore` calls, allowing only deliberate
+  CodeGraph use under the recorded exception; pair this with live MCP inventory;
+- native assistant model attribution where exposed, cross-checked with the JSON
+  result's `modelUsage`. Earlier probes saw `grok-4.6-build` as a usage label for
+  requested `grok-4.6`; do not infer authorship or dismiss a mismatch from a suffix
+  alone. Record unexposed metadata as unverified.

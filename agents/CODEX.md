@@ -6,12 +6,17 @@ Linux and macOS; on Windows read `~/.codex` as `%USERPROFILE%\.codex`.
 ## Step 1: the fork as the always-on rule file
 
 - Save the fork as `~/.codex/karpathy-guidelines-fork.md`.
-- Make `~/.codex/AGENTS.md` exactly one line, with the absolute path:
-  `@/home/<user>/.codex/karpathy-guidelines-fork.md`
-- Remove `@RTK.md`, the CodeGraph block, and the `CONTEXT_MODE_START` to
-  `CONTEXT_MODE_END` block from `AGENTS.md` if present.
+- Embed the fork once in the active global instruction file, preserving unrelated
+  content: `~/.codex/AGENTS.override.md` if present and nonempty, otherwise
+  `~/.codex/AGENTS.md`. Respect `CODEX_HOME` if configured. Do not substitute an
+  unverified `@path` import for the actual guidance.
+- Replace an earlier revision's lone `@.../karpathy-guidelines-fork.md` import
+  line with the embedded text and remove any earlier Caveman wording block. Also
+  remove `@RTK.md`, the CodeGraph block, and the `CONTEXT_MODE_START` to
+  `CONTEXT_MODE_END` block from the active global instruction file if present.
 
-Codex resolves `@` imports by absolute path; a relative import does not load.
+Confirm the full fork is present in the fresh session's instructions, not merely
+a path the model might choose to read.
 
 ## Step 2: skills, by copying
 
@@ -28,13 +33,11 @@ for s in caveman-commit caveman-review caveman-help caveman-stats; do
 done
 ```
 
-If `npx skills add JuliusBrussee/caveman -a codex` was used before, it resolved to
-the repository head, not the pin, and may have added `caveman` and
-`karpathy-guidelines` to the same directory. Remove those two:
-
-```sh
-npx --yes skills remove caveman karpathy-guidelines -g -y
-```
+If an earlier installer was used, inspect both skill directories. Back up and move
+out excluded skills of confirmed Caveman origin and the confirmed upstream
+`karpathy-guidelines` skill replaced by the fork. Preserve unrelated skills and
+report uncertain provenance. `~/.agents/skills` is shared: do not remove a copy
+used by an agent outside the requested scope without approval.
 
 The upstream `caveman` skill body says "Default: full" and forbids plans; the
 upstream `karpathy-guidelines` skill is the unforked, coding-scoped version.
@@ -43,38 +46,45 @@ upstream `karpathy-guidelines` skill is the unforked, coding-scoped version.
 
 `~/.codex/config.toml`:
 
-- Delete the `[mcp_servers.codegraph]` table.
+- Delete `[mcp_servers.codegraph]` unless the user chose the existing-server
+  exception; in that case preserve the server, not automatic routing text/hooks.
 - Delete the `[mcp_servers.context-mode]` table and its `[mcp_servers.context-mode.env]`
   subtable.
-- Delete every `[hooks.state."...hooks.json:..."]` table; they only pin the hashes of
-  the Context Mode hook entries being removed next.
+- Remove only `[hooks.state."...hooks.json:..."]` entries confirmed to refer to
+  the Context Mode hooks being removed next; preserve unrelated hook state.
 
 `~/.codex/hooks.json`: if it held only `context-mode hook codex ...` entries, replace
-the contents with `{"hooks": {}}`.
+the contents with `{"hooks": {}}`. Otherwise remove only those entries.
 
 Codex has no RTK hook; RTK on Codex is instruction-only through `@RTK.md`, which step
 1 removed.
 
 ## Step 4: other layers
 
-Codex has no persistent memory file of its own and no second plugin registry.
-`~/.codex/AGENTS.md` and the files it imports are the whole instruction surface at
-user level; project `AGENTS.md` files add to it per repository.
+Inspect the first nonempty of `~/.codex/AGENTS.override.md` and
+`~/.codex/AGENTS.md`, respecting `CODEX_HOME`, plus the effective settings and any
+additional memory/instruction surfaces exposed by the installed version. Project
+`AGENTS.md` files add guidance per repository. Do not assume an import was expanded.
 
 ## Step 5: cost settings
 
-`config.toml` holds `model` and `model_reasoning_effort`. Keep
-`model_reasoning_effort = "medium"` as the default and pass
-`-c model_reasoning_effort=high` (or `xhigh`) on the sessions that need it.
+Inspect `model` and `model_reasoning_effort` in `config.toml`; preserve them unless
+the user approves a change. For an approved one-session trial, use
+`-c model_reasoning_effort=medium` only if that model supports the level. Do not
+infer equal quality from a lower-effort run or silently change the model/window.
 
 ## Verify
 
 Native record: `~/.codex/sessions/<yyyy>/<mm>/<dd>/rollout-*.jsonl`. After a fresh
 `codex exec` run:
 
-- no `mcp_tool_call` items naming `codegraph` or `ctx_`;
+- no unwanted `mcp_tool_call` items naming `codegraph` or `ctx_`, allowing only
+  deliberate CodeGraph use under the recorded exception;
 - a `turn.completed` event;
-- `--json` output's model field equal to the model passed with `-m`.
+- actual model attribution in the native record, compared with `-m` or its resolved
+  alias. Event fields vary by version; do not invent a model field in `--json`
+  output or treat requested session metadata as proof of every turn's author.
 
-`codex mcp list` (or the `[mcp_servers]` section of `config.toml`) should show
-neither server.
+Check `codex mcp list`, not only config text: no Context Mode, and no CodeGraph
+unless the user chose the existing-server exception. Apply the successful-session
+and harmless-tool checks; missing runtime metadata remains unverified.

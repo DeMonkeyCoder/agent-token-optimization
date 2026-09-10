@@ -3,8 +3,8 @@
 Applies the base setup. This file says only where things live in Hermes and what is
 specific to it. Everything below is per profile: the default profile is
 `~/.hermes`, named profiles are `~/.hermes/profiles/<name>`, and each has its own
-`config.yaml`, prompt, plugins, skills, and memories. Repeat every step for every
-profile, and use `hermes --profile <name>` for the commands.
+`config.yaml`, prompt, plugins, skills, and memories. Repeat only for the profiles
+the user requested, and use `hermes --profile <name>` for the commands.
 
 ## Step 1: the fork as a system-prompt section
 
@@ -35,11 +35,16 @@ def register(ctx):
         "karpathy-guidelines.principles",
         _GUIDELINES,
         position="after_memory",
-        max_chars=6000,
+        max_chars=4000,
     )
 ```
 
-Paste the fork text verbatim inside the triple quotes. Then:
+Paste the fork text verbatim inside the triple quotes. The tested API accepts a
+maximum of 4000 characters per section; the supplied fork is 3789 ASCII characters.
+This was checked on Hermes v0.20.4, local source `ad1ee7a3`. If the text grows,
+check its length and the installed API rather than raising the cap blindly.
+Overlong content is skipped entirely, not truncated; a successful file write can
+therefore leave no loaded guidance. Then:
 
 ```sh
 hermes --profile <name> plugins enable karpathy-guidelines
@@ -75,6 +80,9 @@ installs seven skills including the `caveman` body. If it was used, move
 
 ## Step 3: hooks, MCP, and plugins
 
+Skip server removal only when the user chose the existing-CodeGraph exception;
+still disable automatic prompt/command hooks below.
+
 ```sh
 hermes --profile <name> mcp remove codegraph
 hermes --profile <name> plugins disable rtk-rewrite
@@ -90,30 +98,38 @@ routing block would break the built-in tools.
 
 ## Step 4: memory files
 
-`<profile>/memories/MEMORY.md` and `<profile>/memories/USER.md` are injected into
-every turn and outrank the prompt in the model's reading. Search both for `caveman`,
-`rtk`, and `codegraph`. A line saying caveman is full, or telling the agent to
-prefix commands with rtk, overrides everything above.
+Inspect `<profile>/memories/MEMORY.md` and `<profile>/memories/USER.md` for stale
+Caveman defaults, tool instructions, and old setup paths. Repair only relevant
+conflicts after the migration. Memories can conflict with prompt guidance; they
+do not universally outrank system instructions. Use the profile's supported memory
+interface, preserving unrelated preferences and history.
 
 ## Step 5: cost settings
 
-`config.yaml` holds `model` and, depending on provider, a reasoning or effort
-setting. Set them per profile; a profile used for mechanical batch work should not
-share the design profile's model.
+Inspect the effective model and provider-specific reasoning settings per requested
+profile. Preserve model, effort, and context-window choices unless the user approves
+a change. Separate profiles can support an approved cost experiment, but this setup
+does not require a cheaper model or reduced effort for any profile.
 
 ## Restart
 
 New `hermes` CLI sessions pick up plugin and prompt changes immediately. A running
-gateway (`hermes gateway`) keeps loaded hooks until `hermes gateway restart`, run
-from a plain shell outside any agent session.
+gateway (`hermes gateway`) may keep loaded hooks. Do not restart it without user
+approval; report a pending restart separately from verified fresh-session behavior.
 
 ## Verify
 
 Native record: `<profile>/state.db`, SQLite. For the smoke-test session:
 
-- `sessions.system_prompt` (or the `system_prompts` row its hash points at) contains
-  the fork's precedence sentence and no `rtk` instruction line;
-- `sessions.model` is the model you configured;
-- `messages` for the session has no `tool_name` from codegraph or rtk.
+- the stored system prompt contains the complete fork, including its last sentence
+  (`full and ultra drop articles and conjunctions and are not the default`), not
+  only the precedence sentence near the top; check for unwanted RTK instructions;
+- configured/session model metadata matches the intended model, and actual
+  per-turn author/provider records are checked where exposed; `sessions.model`
+  alone is not proof that no fallback handled a turn;
+- messages show no unwanted CodeGraph/RTK tool use, respecting a recorded explicit
+  CodeGraph exception. Discover the installed database schema before querying.
 
-`hermes --profile <name> mcp list` should not show `codegraph`.
+Check the live MCP inventory for the requested profile; no CodeGraph unless the
+user chose the existing-server exception. Test a successful fresh session with the
+normal config and harmless tool work; report unexposed runtime fields as unverified.
