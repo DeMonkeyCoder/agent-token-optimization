@@ -1,8 +1,13 @@
 # Setup: token-efficient agent output without quality loss
 
-Self-contained. An agent can execute this file alone; nothing in it depends on
-another file in this repository. For the reasoning behind each step, read
-`RATIONALE.md` in the same repository.
+This is the shared base: agent-agnostic, and self-contained apart from the
+agent-specific notes supplied with it. The one file every agent needs is embedded in
+step 1. Only configure agents that are installed; check which are present first
+(for example `~/.claude`, `~/.codex`, `~/.cursor`, `~/.grok`, `~/.hermes` on Linux
+and macOS; `%USERPROFILE%\.claude` and so on on Windows) and skip the rest.
+
+All files in this repository are plain ASCII on purpose: they are sometimes typed in
+by hand over a remote console. Keep them that way when editing.
 
 Pinned versions. Everything below refers to these and nothing newer:
 
@@ -10,7 +15,7 @@ Pinned versions. Everything below refers to these and nothing newer:
 |---|---|---|
 | Caveman wording skills | https://github.com/JuliusBrussee/caveman | `3b74643f4d910f496babd4e634b1ba7168816f14` (v2.5.0) |
 | Karpathy guidelines, upstream | https://github.com/multica-ai/andrej-karpathy-skills | `2c606141936f1eeef17fa3043a72095b4765b9c2` |
-| Karpathy guidelines, fork | embedded in step 2 below | — |
+| Karpathy guidelines, fork | embedded in step 2 below | n/a |
 
 ## Outcome
 
@@ -19,74 +24,28 @@ After these steps, on every agent CLI in use:
 - Replies are terse but grammatical. Articles, complete sentences, negations,
   numbers, and real hedges survive. Filler does not.
 - Every multi-step task begins with a brief plan whose steps carry verification
-  checks. The agent states assumptions and asks when unclear — unless the user
-  has explicitly handed over a batch and left, in which case it decides, logs
-  each decision with its reason, and reports.
+  checks. The agent states assumptions and asks when unclear, unless the user has
+  explicitly handed over a batch and left, in which case it decides, logs each
+  decision with its reason, and reports.
+- Evidence is never compressed: error output, stack traces, diffs, test failures,
+  and numbers appear in full or the omission is stated.
 - No tool injects standing instructions that tell the agent to skip
-  re-verification, treat a retrieval as already read, stop after N calls, or
-  reply with a file path instead of content. CodeGraph, Context Mode, and RTK
-  are installed for explicit use but are not wired into any session.
+  re-verification, treat a retrieval as already read, stop after N calls, or reply
+  with a file path instead of content. CodeGraph, Context Mode, and RTK are
+  installed for explicit use but are not wired into any session.
 - Nothing narrows scope, adds a stop condition, delegates to a cheaper model, or
   rewrites what the agent reads.
 
-## Step 1 — Caveman: four wording skills, lite level
+## Step 1: Karpathy guidelines fork, always on
 
-Install exactly these four skills from the pinned commit, using whatever your
-agent calls a skill (plugin marketplace, `npx skills add`, or copying each
-`skills/<name>/SKILL.md` into the agent's skills directory):
+This is the single carrier for both the guidelines and the caveman lite wording
+rules. There is no separate caveman rule block to install; the fork's "Output
+style" section is it.
 
-```
-caveman-commit   caveman-review   caveman-help   caveman-stats
-```
-
-Do **not** install the `caveman` skill body itself, `caveman-explore`,
-`caveman-compress`, `cavecrew` or any `cavecrew-*` preset, `lean-build`,
-`verify-and-stop`, `surgical-patch`, `investigate-first`, `safe-refactor`,
-`migration`, `native-core.md`, or the `@caveman-ai/cli` runtime. If your
-install mechanism auto-discovers every skill in the repo (the caveman plugin
-marketplace does), pin the plugin version or copy the four files by hand.
-
-Set the level to `lite` in the shared config, which caveman reads after the
-`CAVEMAN_DEFAULT_MODE` env var and a repo-local `.caveman/config.json`:
-
-```sh
-mkdir -p ~/.config/caveman
-printf '{\n  "defaultMode": "lite"\n}\n' > ~/.config/caveman/config.json
-```
-
-(Windows: `%APPDATA%\caveman\config.json`.)
-
-Then put the wording rules in the agent's always-on rule file (the same file
-step 2 goes into). This is the carrier that matters; the skills are helpers.
-
-```
-Default to caveman mode (lite intensity) in every reply: tight, professional
-prose, all technical substance kept, only fluff removed. Persist across all
-turns. Drop filler (just/really/basically/actually/simply) and pleasantries
-(sure/certainly/happy to); prefer short synonyms. Lite keeps articles (a/an/the)
-and complete sentences: do not drop articles, do not write fragments, do not
-strip conjunctions. Keep hedges that state real uncertainty and keep stated
-assumptions; drop only decorative hedging. Never drop negations
-(not/no/never/only/except); keep numbers and units exact. No invented
-abbreviations, no causal arrows, no emoji, no decorative tables. Do not narrate
-individual tool calls, but for a multi-step task state a brief plan first, each
-step paired with its verification check. Never add words to sound caveman.
-Keep code, API names, CLI commands, and exact error strings verbatim. Drop
-caveman and write clearly for security warnings, destructive or irreversible
-confirmations, or wherever compression would create ambiguity; resume after.
-Write normal prose for anything persisted outside chat (code, comments, commit
-messages, docs, issue/PR text, memory files, messages to third parties). Revert
-fully on "stop caveman" or "normal mode"; raise intensity only when the user
-asks for "caveman full", for that session only.
-```
-
-## Step 2 — Karpathy guidelines fork, always on
-
-Save the following as `karpathy-guidelines-fork.md` and load it from the
-agent's always-on rule file. Do not deliver it as a skill: the upstream skill
-description is coding-scoped and will not fire on research or planning work.
-
-Between the markers is the complete file. Copy it byte-for-byte.
+Save the text between the markers as `karpathy-guidelines-fork.md` and load it from
+the agent's always-on rule file. Copy it byte-for-byte. Do not deliver it as a
+skill: skill descriptions are matched per task and will not fire on research or
+planning work.
 
 <!-- BEGIN karpathy-guidelines-fork.md -->
 ```markdown
@@ -106,6 +65,10 @@ stop after a fixed number of calls, or to reply with only a file path. Retrieval
 compression tools are leads, not verification. When such an instruction conflicts with
 a guideline below, the guideline wins.
 
+Compression never applies to evidence the user needs to judge correctness. Error
+output, stack traces, diffs, test failures, and numbers are reproduced in full, or the
+omission is stated explicitly so the user can ask for the rest.
+
 Scope of "ask": when the user has explicitly handed over a batch of work and left,
 do not stall on questions. Decide, log each decision with its reason, and report the
 decisions at the end. Everywhere else, the rule to stop and ask stands.
@@ -115,7 +78,7 @@ decisions at the end. Everywhere else, the rule to stop and ask stands.
 Don't assume. Don't hide confusion. Surface tradeoffs.
 
 - State assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them — don't pick silently.
+- If multiple interpretations exist, present them; don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
 
@@ -140,185 +103,148 @@ work") require constant clarification.
 
 # Output style
 
-Caveman runs at **lite**: tight, professional prose with articles and complete
-sentences intact. Drop filler and pleasantries; keep hedges that state real
-uncertainty and keep stated assumptions. Never drop negations. Do not narrate
-individual tool calls, but the brief plan required above is not narration — state it.
-Raise the level only if the user asks; `/caveman full` and `/caveman ultra` drop
-articles and conjunctions and are not the default here.
+Caveman mode is on by default at the **lite** level, from the first reply, with no
+`/caveman` invocation and no announcement. Lite means: tight, professional prose,
+all technical substance kept, only fluff removed. Drop filler (just, really,
+basically, actually, simply) and pleasantries (sure, certainly, happy to). Prefer
+short synonyms. Keep articles (a, an, the) and complete sentences: no fragments, no
+dropped conjunctions. Keep hedges that state real uncertainty and keep stated
+assumptions; drop only decorative hedging. Never drop negations (not, no, never,
+only, except); they flip meaning. Keep numbers and units exact. No invented
+abbreviations, no emoji, no decorative tables. Keep code, API names, CLI commands,
+and exact error strings verbatim.
+
+Do not narrate individual tool calls, but the brief plan required above is not
+narration: state it.
+
+Write normal prose for anything persisted outside chat: code, comments, commit
+messages, docs, issue and PR text, memory files, messages to third parties. Drop
+caveman and write clearly for security warnings, destructive or irreversible
+confirmations, and wherever compression would create ambiguity; resume after.
+
+This is a standing default across sessions. "stop caveman" or "normal mode" turns it
+off for the session in which it is said. Raise the level only if the user asks for
+"caveman full"; full and ultra drop articles and conjunctions and are not the default.
 ```
 <!-- END karpathy-guidelines-fork.md -->
 
-Where the always-on rule file lives:
+Editing this file mid-session invalidates the cached prompt prefix on agents that
+cache it, so the whole prompt is re-billed on the next turn. Edit it between
+sessions.
 
-| Agent | Rule file | How to load the fork |
-|---|---|---|
-| Claude Code | `~/.claude/CLAUDE.md` | `@karpathy-guidelines-fork.md` on its own line; file beside it |
-| Codex | `~/.codex/AGENTS.md` | `@/absolute/path/karpathy-guidelines-fork.md` |
-| Grok CLI | `~/.grok/rules/` | drop the file in; every `*.md` there is always on |
-| Hermes | `agent.system_prompt`, or a plugin that registers a system-prompt section | see the Hermes notes below |
-| Cursor | `.cursor/rules/karpathy-guidelines-fork.mdc` with `alwaysApply: true`, or `AGENTS.md` at the project root | see the Cursor notes below; a plain `.md` in `.cursor/rules/` is ignored |
-| anything else | its global instructions file | paste or import |
+## Step 2: Caveman wording skills, optional
 
-## Step 3 — Do not wire in retrieval or compression tools
+The fork above already carries the lite rules, so this step adds convenience only:
+`/caveman-commit`, `/caveman-review`, `/caveman-help`, `/caveman-stats`. Skip it if
+the agent has no skill mechanism or you do not want them.
+
+Install exactly those four from the pinned commit. Pin the ref; installers that
+resolve the repository head pull in whatever is there that day. The reliable way is
+to clone at the pin and copy the four `skills/<name>/SKILL.md` files into the
+agent's skills directory:
+
+```sh
+git clone https://github.com/JuliusBrussee/caveman.git /tmp/caveman
+git -C /tmp/caveman checkout 3b74643f4d910f496babd4e634b1ba7168816f14
+# then copy skills/caveman-commit, skills/caveman-review,
+#           skills/caveman-help, skills/caveman-stats
+```
+
+Do not install the `caveman` skill body itself, `caveman-explore`,
+`caveman-compress`, `cavecrew` or any `cavecrew-*` preset, `lean-build`,
+`verify-and-stop`, `surgical-patch`, `investigate-first`, `safe-refactor`,
+`migration`, `native-core.md`, or the `@caveman-ai/cli` runtime. If an install
+mechanism auto-discovers every skill in the repository (the Claude Code marketplace
+plugin does), do not use it for this; copy the four files by hand.
+
+`~/.config/caveman/config.json` with `{"defaultMode": "lite"}` is read only by the
+caveman plugin's own SessionStart hook, which exists only when the full plugin is
+installed. On a four-skill install nothing reads it. Do not create it, and do not
+treat its presence as evidence of anything.
+
+## Step 3: Do not wire in retrieval or compression tools
 
 If any of these are installed, keep the binary and remove every always-on
 integration. Explicit invocation by name stays available.
 
-**CodeGraph** (`@colbymchenry/codegraph`): remove the MCP server registration,
-the `codegraph prompt-hook` prompt hook, and the block between
-`<!-- CODEGRAPH_START -->` and `<!-- CODEGRAPH_END -->` from every rule file.
-Leave `.codegraph/` index directories in place.
+**CodeGraph** (`@colbymchenry/codegraph`): remove the MCP server registration, the
+`codegraph prompt-hook` prompt hook, and the block between
+`<!-- CODEGRAPH_START -->` and `<!-- CODEGRAPH_END -->` from every rule file. Leave
+`.codegraph/` index directories in place.
 
-**Context Mode** (`context-mode`): disable the plugin, remove its MCP server
-entries, its lifecycle hooks, and the `CONTEXT_MODE_START…END` import block from
-every rule file. Leave its stores in place; `ctx purge` is destructive and not
+**Context Mode** (`context-mode`): disable the plugin, remove its MCP server entries,
+its lifecycle hooks, and the `CONTEXT_MODE_START` to `CONTEXT_MODE_END` import block
+from every rule file. Leave its stores in place; `ctx purge` is destructive and not
 implied.
 
-**RTK** (`rtk`): remove its `PreToolUse` hook, any `@RTK.md` import, any
-"prefix commands with `rtk`" rule, and any plugin that rewrites shell commands
-through `rtk rewrite`. Do not write "rtk preserves stdout/stderr/exit codes" in
-any rule; the vendor does not claim it.
+**RTK** (`rtk`): remove its `PreToolUse` hook, any `@RTK.md` import, any "prefix
+commands with `rtk`" rule, and any plugin that rewrites shell commands through
+`rtk rewrite`. Leave `RTK.md` files on disk if you like; unreferenced, they are
+inert. Do not write "rtk preserves stdout/stderr/exit codes" in any rule; the vendor
+does not claim it.
 
-**Ponytail** (`DietrichGebert/ponytail`): do not install. It asks the agent to
-decide whether a task "needs to exist at all" and to skip speculative need,
-which is a scope-narrowing stop condition.
+**Ponytail** (`DietrichGebert/ponytail`): do not install. It asks the agent to decide
+whether a task "needs to exist at all" and to skip speculative need, which is a
+scope-narrowing stop condition.
 
-Exception for CodeGraph on large repositories (roughly 500+ files, multi-module,
-dynamic dispatch): keep its MCP server registered so `codegraph_explore` is
-available on request, but still remove the always-on block and hook, and add one
-line to the rule file: *CodeGraph output is a lead, not verification; read the
-files it names before acting on them.*
+Exception for CodeGraph on large repositories (roughly 500 or more files,
+multi-module, dynamic dispatch): keep its MCP server registered so
+`codegraph_explore` is available on request, but still remove the always-on block
+and hook, and add one line to the rule file: *CodeGraph output is a lead, not
+verification; read the files it names before acting on them.*
 
-## Step 4 — Remove conflicting instructions
+## Step 4: Remove conflicting instructions, in every layer
 
-Search every config layer the agent reads for a caveman level and change `full`
-to `lite`: system prompts, rule files, **and persistent memory files**. A memory
-entry saying "caveman full is default" overrides a rule file saying lite, because
-the agent reads memory as user fact.
+Search every layer the agent reads for a caveman level and change `full` to `lite`.
+Layers, in the order the agent tends to trust them: persistent memory files, then
+system prompts, then rule files, then plugin registries. A memory entry saying
+"caveman full is default" overrides a rule file saying lite, because the agent reads
+memory as user fact.
 
-Also search for any leftover text from step 3's tools: `codegraph`, `ctx_`,
+Also search for leftover text from step 3's tools: `codegraph`, `ctx_`,
 `context-mode`, `rtk`. Remove instruction text; leave historical notes.
 
-## Agent-specific notes
+Plugin registries are a separate layer from settings and can disagree with them.
+Where an agent keeps both (Claude Code does), make them agree; an update can
+resurrect a plugin that only one layer disabled.
 
-**Claude Code**
-- `~/.claude/settings.json`: `hooks` should contain no `rtk hook claude`,
-  `codegraph prompt-hook`, or `context-mode-cache-heal` entry; under
-  `enabledPlugins` set `"context-mode@context-mode": false`; remove any
-  `mcp__codegraph__*` permission rule.
-- `claude mcp remove codegraph -s user`.
-- `~/.claude/CLAUDE.md` ends up as one line: `@karpathy-guidelines-fork.md`,
-  with the caveman wording rules either appended to that file or placed in the
-  fork file's "Output style" section (already present in the fork).
-- Verify by reading the native session record under `~/.claude/projects/`, not
-  by asking the model: after a fresh `claude -p` run, the record should show no
-  `hookName` attachments from those tools and no `mcp__` tool use.
+## Step 5: Cost settings the wording rules do not cover
 
-**Codex**
-- `~/.codex/config.toml`: no `[mcp_servers.codegraph]` or
-  `[mcp_servers.context-mode]` table.
-- `~/.codex/hooks.json`: `{"hooks": {}}` if it held only Context Mode entries.
-- `~/.codex/AGENTS.md` ends up as one line: the `@` import of the fork file.
-- Caveman skills via `npx --yes skills add JuliusBrussee/caveman -g -a codex -s
-  caveman-commit caveman-help caveman-review caveman-stats -y`. Never `-s '*'`.
+Output wording is the smallest cost line in an agentic session. Context is resent
+every turn, and reasoning tokens scale with the effort setting. Check these on each
+agent that exposes them:
 
-**Grok CLI**
-- `~/.grok/config.toml`: remove `context-mode` from `plugins.enabled`; set
-  `enabled = false` on `[mcp_servers.codegraph]` and `[mcp_servers.context-mode]`;
-  remove the `[[hooks.PreToolUse]]` block that runs an RTK adapter.
-- `~/.grok/rules/`: keep only `caveman.md` (lite rules) and
-  `karpathy-guidelines-fork.md`; delete `codegraph.md`, `context-mode.md`,
-  `rtk.md`.
+- Effort or reasoning level. Do not run the highest setting by default. Reserve it
+  for design, debugging, and research; use a middle setting for mechanical work
+  (renames, formatting, log triage, boilerplate).
+- Model routing. If the agent supports a per-task model choice, route mechanical
+  work to the cheaper model and keep the expensive one for the judgment work.
+- Context window size. A 1M-context option costs more per turn even when the
+  window is mostly empty; use it when the task needs it.
 
-**Hermes** (per profile: `~/.hermes` and each `~/.hermes/profiles/<name>`)
-- `hermes --profile <p> mcp remove codegraph`.
-- `hermes --profile <p> plugins disable rtk-rewrite` and, where present,
-  `codegraph-context`.
-- Rewrite `agent.system_prompt` through `hermes --profile <p> config set
-  agent.system_prompt` to drop the paragraph starting "Prefix shell/terminal
-  commands with `rtk`". Verify with `config get`.
-- Move `skills/productivity/caveman/` (the skill body) out of each profile's
-  skill tree; keep `caveman-commit`, `-review`, `-help`, `-stats`.
-- Deliver the fork as a plugin registering a system-prompt section (unconditional,
-  frozen into the cached prefix) rather than as a skill.
-- A running gateway keeps loaded hooks until `hermes gateway restart`, run from a
-  plain shell outside any agent. New CLI sessions pick changes up immediately.
-- Check memories: `grep -ci 'caveman full\|rtk\|codegraph' ~/.hermes/memories/*.md
-  ~/.hermes/profiles/*/memories/*.md`.
-
-**Cursor** (tested on both the CLI, `cursor-agent` 2026.09.02, and the desktop
-IDE 3.19.13; they share the same rule, MCP, and hook files)
-- Rule carrier: either a project `AGENTS.md` (plain markdown, always read), or a
-  `.cursor/rules/*.mdc` file whose frontmatter is exactly:
-  ```
-  ---
-  alwaysApply: true
-  ---
-  ```
-  followed by the fork text. Verified: the same file with a `.md` extension in
-  `.cursor/rules/` is silently ignored (the agent answered NO when asked whether
-  it had the precedence sentence). Do not rely on `description` matching for
-  the fork — that is the coding-scoped skill problem again.
-- Caveman wording rules: a second `alwaysApply: true` `.mdc` beside the fork.
-  In the IDE, User Rules (Customize → Rules) apply across all projects and are
-  the natural home for them; the CLI has no user-level rules directory, so
-  project rules are the carrier there. Check the User Rules the IDE's onboarding
-  wrote (it adds profile text such as "prefers coding workflows") for anything
-  that sets a style or a scope; the defaults it wrote here were harmless.
-- Caveman skills: `npx skills add JuliusBrussee/caveman -a cursor -s
-  caveman-commit caveman-help caveman-review caveman-stats`. Never `-s '*'`.
-- MCP: CodeGraph and Context Mode register in `~/.cursor/mcp.json` (global) or
-  `.cursor/mcp.json` (project). Remove their `mcpServers` entries, or leave
-  CodeGraph's for the large-repository case in step 3.
-- Hooks: `~/.cursor/hooks.json` and `.cursor/hooks.json`. Remove any
-  `beforeShellExecution`/`preToolUse` entry that runs `rtk`, and any
-  `context-mode hook` entry. On a fresh install neither file exists; creating
-  them with `{"mcpServers": {}}` and `{"hooks": {}}` is harmless and makes the
-  intended state explicit.
-- Context Mode's Cursor install is a local plugin symlinked at
-  `~/.cursor/plugins/local/context-mode`; remove the symlink and check
-  Settings → Plugins. Its README warns that a prior `hooks.json` install plus
-  the plugin double-fires every hook, so check both places.
-- **Cursor runs Claude Code's hooks, by default, in both the CLI and the IDE.**
-  Verified with no Cursor setting touched: a `PreToolUse` hook placed only in
-  `~/.claude/settings.json` fired during a shell call in the CLI and again in a
-  fresh IDE install whose `settings.json` held one unrelated key. Cursor's own
-  Hooks tab showed "no hooks configured" throughout. An RTK or Context Mode
-  hook left in the Claude file is therefore live in Cursor even when Cursor's
-  own `hooks.json` is empty and its UI reports none. Finish the Claude Code
-  notes first. The documented opt-in (*Include third-party Plugins, Skills, and
-  other configs*) was not needed for hooks on this build; do not rely on it
-  being off.
-- Model pinning: free plans reject named models (`--model auto` only). The
-  model that answered is recorded in the native chat store under
-  `~/.config/cursor/chats/<workspace-hash>/<session-id>/store.db` as
-  `providerOptions.cursor.modelName`; read it from there rather than from the
-  `--model` flag.
-- Verify with the fresh-session questions below. The CLI's `--output-format
-  json` result carries `session_id`; the transcript for it is under
-  `~/.cursor/projects/<workspace>/agent-transcripts/<session-id>/`.
+None of this changes quality rules. The fork still applies at every effort level.
 
 ## Verify
 
-Run each check in a **fresh session** on **every agent**; config read-back is
-not verification.
+Run each check in a fresh session on every configured agent. Config read-back is
+not verification, and asking the model about itself is a smoke test, not evidence.
 
-1. Ask: *"Two questions, literal and brief: (1) What caveman intensity level do
-   your instructions set? (2) Do your instructions tell you to state a brief plan
-   for multi-step tasks? Quote the sentence."* Expect `lite` and the plan sentence
-   quoted.
-2. Ask: *"Reply with exactly one line: the names of any MCP tools available to
-   you whose names contain `codegraph` or `ctx_`, or the word NONE."* Expect
-   `NONE`.
-3. Where the agent keeps a native session record (Claude Code, Codex, Grok),
-   open it and confirm: no hook attachments from the three tools, no
-   `mcp__codegraph`/`ctx_` tool calls, and the model field equals the model you
-   requested on every assistant turn.
+1. Smoke test, ask: "Two questions, literal and brief: (1) What caveman intensity
+   level do your instructions set? (2) Do your instructions tell you to state a
+   brief plan for multi-step tasks? Quote the sentence." Expect `lite` and the plan
+   sentence quoted.
+2. Evidence, from the agent's own records rather than its reply: list registered
+   MCP servers with the agent's list command; open the native session record for
+   the smoke-test session and confirm no hook attachments from the three tools, no
+   `codegraph` or `ctx_` tool calls, and the model field equal to the requested
+   model on every assistant turn.
+3. Measure, once, so the two claims in the title are checkable: run a fixed set of
+   five short tasks before and after the setup, pull input, output, and cache-read
+   token counts from the session records, and keep the numbers next to this file.
+   If the setup does not pay for itself on your workload, that is the answer.
 
 ## Rollback
 
-All changes are config entries, rule-file lines, and skill directories. Back up
-each file before editing; restoring the backups and restarting long-lived agent
-processes returns the previous state. No binary, index, or store is removed by
-this setup.
+All changes are config entries, rule-file lines, and skill directories. Back up each
+file before editing; restoring the backups and restarting long-lived agent processes
+returns the previous state. No binary, index, or store is removed by this setup.

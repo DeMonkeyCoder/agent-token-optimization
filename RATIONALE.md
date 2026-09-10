@@ -29,7 +29,7 @@ articles and allows fragments; `ultra` strips conjunctions. Upstream's own text
 concedes where that goes wrong: its Auto-Clarity section tells the agent to
 abandon compression when "compression itself creates technical ambiguity", and
 the maintainer advises "Use lite/off for detail-heavy work". Fragments and
-dropped conjunctions are where meaning is lost — a negation, a condition, a
+dropped conjunctions are where meaning is lost: a negation, a condition, a
 unit. Lite removes filler and nothing else, so it is the only level compatible
 with the standard.
 
@@ -67,6 +67,33 @@ to match, so the defaults it carries are both wrong and unpredictable. The lite
 wording rules belong in the always-on rule file, where they apply every time
 and can be read and audited.
 
+**Why the rules live in one place.** An earlier revision of the setup installed
+the wording rules twice: once as a block in the agent's rule file and once as the
+fork's "Output style" section, both into the same file. Two near-copies cost
+input tokens every turn and diverge the first time one is edited. The fork's
+section is now the only carrier. It also says the mode is on from the first
+reply with no invocation, because the earlier wording only pinned the level and
+could be read as "if caveman is invoked, use lite"; a reviewer on a second
+machine read it that way.
+
+**Why the caveman config file is gone.** `~/.config/caveman/config.json` with
+`defaultMode: lite` is read by exactly one thing: the caveman plugin's own
+SessionStart hook (`src/hooks/caveman-activate.js`), which resolves the mode
+from `CAVEMAN_DEFAULT_MODE`, then a repo-local `.caveman/config.json`, then the
+user file, and falls back to `full`. That hook exists only when the full plugin
+is installed, which the setup forbids. On a four-skill install nothing reads
+the file, and its presence invited a false verification: "the level is lite, I
+checked the config". The step was removed rather than gated.
+
+**Why the installer is not used.** `npx skills add JuliusBrussee/caveman` has no
+ref argument and resolves to the repository head. On one machine it had
+installed `caveman`, `cavecrew`, `caveman-compress`, and `lean-build` alongside
+the intended four, which is the exact set the standard excludes. A pinned clone
+plus copying four directories is longer to type and has no such failure mode.
+A model executing the setup also declined to run the installer on its own
+judgment (a third-party script from the internet), so the copy route is the one
+that gets done.
+
 ## Why the Karpathy guidelines are forked
 
 The upstream file is good and the fork keeps its three core principles nearly
@@ -84,7 +111,7 @@ with scope narrowing.
 **Added: precedence over output-style rules.** Caveman says "No preamble, plan,
 or progress note before or between calls." Karpathy says "state a brief plan,
 each step paired with its verification check." Left unresolved, the agent picks
-one silently — and in practice picks the one that produces less text. The fork
+one silently, and in practice picks the one that produces less text. The fork
 says the guidelines win: a brief plan is not narration. This single sentence is
 what stops the no-look-ahead failure mode, and it is the most important line
 in the setup.
@@ -94,9 +121,9 @@ review found that retrieval tools inject standing text like "don't re-verify
 them with grep", "treat each block as a Read you have already performed", and
 "return: file path + 1-line description". The original precedence sentence only
 covered *style* rules, so these evidence rules had no counterweight and the
-model resolved the conflict on its own. The fork now names the pattern —
-not-re-verify, not-read, already-read, stop-after-N-calls, path-only reply —
-and states that retrieval and compression tools are leads, not verification.
+model resolved the conflict on its own. The fork now names the pattern
+(not-re-verify, not-read, already-read, stop-after-N-calls, path-only reply) and
+states that retrieval and compression tools are leads, not verification.
 This is written generically so the next tool cannot reopen the gap.
 
 **Added: scope for "ask".** Karpathy says "If something is unclear, stop. Ask."
@@ -105,10 +132,26 @@ correct in context. The fork resolves them: when the user has explicitly handed
 over a batch and left, decide, log each decision with its reason, and report;
 everywhere else the ask rule stands.
 
+**Added: evidence is never compressed.** The precedence paragraphs protect
+plans, assumptions, and hedges. They did not protect evidence, and caveman's
+own rules ask for the "shortest decisive line" of an error rather than the
+error. In debugging the decisive line is often not identifiable in advance, so
+that rule is a correctness hazard exactly where the user most needs to judge
+for themselves. The fork now states that error output, stack traces, diffs,
+test failures, and numbers are reproduced in full, or the omission is stated.
+This came from a review of the setup on a second machine, not from the
+original council, and it is the one addition that changes what the agent shows
+rather than how it phrases things.
+
+**Why the upstream plugin is disabled where the fork is installed.** Leaving
+`andrej-karpathy-skills` enabled beside the fork loads the same guidance twice:
+once always-on, once on a coding-scoped trigger, in the unforked form that
+still carries "Surgical Changes". The per-agent notes disable it.
+
 **Delivery: always-on, never as a skill.** Upstream ships the guidelines as a
 skill whose description is coding-scoped ("Use when writing, reviewing, or
 refactoring code"). That description does not fire on research, planning, or
-diagnosis — which is exactly where the second review found the quality risk
+diagnosis, which is exactly where the second review found the quality risk
 concentrated. Karpathy already prescribes an independent oracle (deterministic
 tests) for bug fixes and refactors; the unprotected phases are evidence
 gathering, and a coding-scoped skill leaves them unprotected.
@@ -119,7 +162,7 @@ CodeGraph builds a per-repository call graph and exposes one tool that returns
 graph-selected source. Its standing instructions, injected into every session
 via MCP initialization text and generated rule-file blocks, say:
 
-> Trust codegraph's results — don't re-verify them with grep
+> Trust codegraph's results, don't re-verify them with grep
 
 > Treat each block as a Read you have already performed: do not Read a file
 > shown here
@@ -133,7 +176,7 @@ That is the standard's failure mode, written as an instruction.
 Two behaviours were reproduced first-hand on the pinned version and on the next
 release. Asked about a symbol name that does not exist, the `callers`,
 `callees`, and `impact` paths returned results for the nearest match with no
-absence statement — confident wrongness rather than "not found". The default
+absence statement: confident wrongness rather than "not found". The default
 `explore` path returned related source without stating that the exact symbol
 was absent. Exact-name queries, by contrast, were correct with no false
 positives, and returned source was byte-identical to disk. So the tool is
@@ -167,7 +210,7 @@ session and every subagent prompt, says:
 
 > ONE call replaces 30+.
 
-> Write artifacts to FILES — never inline. Return: file path + 1-line
+> Write artifacts to FILES - never inline. Return: file path + 1-line
 > description.
 
 Its benchmark is 21 deterministic fixtures measuring bytes. There is no
@@ -177,7 +220,7 @@ with the least evidence about task quality.
 Two behaviours were reproduced first-hand. A 50 KB output with one decisive line
 unrelated to the stated query intent returned a 1.8 KB excerpt without that
 line; a later targeted search for the exact string did retrieve it. Omitted
-material is retained and recoverable — but only if the agent knows to search
+material is retained and recoverable, but only if the agent knows to search
 again, and its search throttles after three calls. "Announced and recoverable"
 at the tool's layer is silent at the agent's layer, which is what a user
 perceives as no look-ahead.
@@ -209,14 +252,14 @@ different category from the two above.
 It is off anyway, for three reasons.
 
 **The savings claim does not survive its own documentation.** The README says
-60–90% token reduction. The docs say bash output is "the only thing RTK
+60-90% token reduction. The docs say bash output is "the only thing RTK
 controls", "one contributor to input tokens", and that "a command showing 90%
 fewer output bytes does not make your session 90% cheaper". It ships no
 tokenizer; `rtk gain` estimates at bytes/4. On the machine measured, its own
 estimator reported 5.8% saved over 12,365 commands.
 
 **Independent measurement is neutral to negative.** JetBrains, on Claude Code
-with SkillsBench: +7.6% cost at low reasoning effort (p=0.004), ±0% at high
+with SkillsBench: +7.6% cost at low reasoning effort (p=0.004), plus or minus 0% at high
 effort, task quality unchanged. A maintainer attributed the cost to extra API
 turns when a task is not well covered by the filters. A separate 35-case CI-log
 study found downstream diagnosis quality degraded under `rtk-log` with a 13.3%
@@ -246,7 +289,7 @@ review. It was never wired into a session on this machine after that.
 The second review audited 45 locally installed skills beyond the caveman set
 and kept all of them. None is always-on; each loads only when the agent judges
 its description to match. Their direction is mostly toward more verification and
-look-ahead — "look at X before building around 'X is not possible'", "a
+look-ahead, "look at X before building around 'X is not possible'", "a
 marker-only probe does not validate tools", "implementation-lean output modes
 must not govern design work". The few that narrow scope are bound to a named
 risky task (device takeover, outbound messaging, destructive database work) and
@@ -255,8 +298,8 @@ a safety gate.
 
 ## What was learned about the review method itself
 
-Two findings came from the harness rather than the subjects, and both changed
-how verification is done in `SETUP.md`.
+Several findings came from the harness and from running the setup on a second
+machine rather than from the subjects, and each changed the setup.
 
 **A clean exit code is not evidence that the requested model answered.** The
 provider silently substituted a different model mid-run after a safety
@@ -285,6 +328,43 @@ through a home-rooted path. This is why `SETUP.md` orders the Claude Code
 cleanup before Cursor's and why the verification step reads what reached the
 model rather than which file was edited or what a settings screen reports.
 
+**Plugin registries are a config layer of their own.** Claude Code keeps
+`enabledPlugins` in `settings.json` and again in
+`plugins/installed_plugins.json`, and the two can disagree; on one machine
+Context Mode was `false` in the first and `true` in the second, with the
+marketplace still listed so an update could reinstall it. Which layer wins at
+runtime was not established by a controlled test (the plugin's skills were
+absent from the session, which suggests the settings file won). The setup now
+makes both layers agree instead of relying on precedence.
+
+**The wording rules govern the smallest cost line.** On the second machine the
+settings selected a 1M-context model with elevated reasoning effort for every
+session. Context is resent every turn and reasoning tokens scale with effort,
+so one effort-level change on mechanical tasks plausibly outweighs every
+wording rule combined. The setup now has a cost-settings step. It is separate
+from the quality rules on purpose: the fork applies at every effort level, and
+lowering effort for a rename is not the same as letting a tool tell the agent
+to stop reading.
+
+**A setup that does not measure cannot claim savings.** Nothing in the earlier
+verify section measured tokens or quality; both checks confirmed that rules
+were present. The verify section now asks for a five-task baseline before and
+after, from the session records, so the title's two claims are checkable on
+the machine where the setup runs.
+
+**Self-report is a smoke test, not evidence.** The earlier verify section said
+not to ask the model about itself and then did so twice. Asking is kept as the
+quick check; the evidence is the agent's MCP list and its native session
+record.
+
+**A model may decline part of the setup.** Running the setup with a capable
+model on a fresh Windows machine, the model completed every config edit and
+refused the one step that ran a third-party installer, on its own judgment,
+and said so. A weaker model had earlier stopped partway without saying which
+steps were skipped. The setup now avoids installers entirely (clone at the
+pin, copy four directories) and the per-agent notes tell the executing agent
+to name any step it declines rather than skip it silently.
+
 ## What was and was not tested
 
 Claude Code, Codex, Grok CLI, Hermes, the Cursor CLI, and the Cursor desktop
@@ -297,7 +377,7 @@ For Cursor, three documentation claims were tested directly. Two held: a plain
 `alwaysApply: true` `.mdc` loads, and Claude Code hooks fire inside Cursor.
 One did not hold as written: the third-party-config opt-in was not required
 for Claude hooks on either the CLI or the IDE. The IDE probe also showed the
-fork's brief-plan rule in effect unprompted — the agent opened with "Plan: …
+fork's brief-plan rule in effect unprompted: the agent opened with "Plan: ...
 Verification: shell output plus tool catalog" before answering.
 
 One thing was not tested: none of the three tools had been installed into
