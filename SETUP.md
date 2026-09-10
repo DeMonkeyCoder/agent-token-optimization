@@ -4,7 +4,7 @@ This is the shared base: agent-agnostic, and self-contained apart from the
 agent-specific notes supplied with it. The one file every agent needs is embedded in
 step 1. Only configure agents that are installed; check which are present first
 (for example `~/.claude`, `~/.codex`, `~/.cursor`, `~/.grok`, `~/.hermes` on Linux
-and macOS; `%USERPROFILE%\.claude` and so on on Windows) and skip the rest.
+and macOS; the equivalents under `%USERPROFILE%` on Windows) and skip the rest.
 
 All files in this repository are plain ASCII on purpose: no em dashes, arrows, or
 curly quotes. Keep them that way when editing.
