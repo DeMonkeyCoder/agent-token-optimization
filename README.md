@@ -21,11 +21,10 @@ the other by name, so any subset can be pasted together.
 | `karpathy-guidelines-fork.md` | The always-on guidelines file, byte-identical to the copy embedded in `SETUP.md` |
 | `karpathy-guidelines-fork.patch` | Reproduces the fork from upstream: `git checkout 2c60614 && patch -p1 < karpathy-guidelines-fork.patch` |
 
-All files are plain ASCII. They get typed by hand over remote consoles, so no
-em dashes, arrows, curly quotes, or other characters a keyboard cannot produce.
-Keep it that way when editing. The one exception is the removed (`-`) lines in
-`karpathy-guidelines-fork.patch`, which quote upstream's arrows verbatim; nobody
-types a patch by hand.
+All files are plain ASCII: no em dashes, arrows, curly quotes, or other characters
+a keyboard cannot produce. Keep it that way when editing. The one exception is the
+removed (`-`) lines in `karpathy-guidelines-fork.patch`, which quote upstream
+verbatim.
 
 ## Tools covered
 

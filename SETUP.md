@@ -6,8 +6,8 @@ step 1. Only configure agents that are installed; check which are present first
 (for example `~/.claude`, `~/.codex`, `~/.cursor`, `~/.grok`, `~/.hermes` on Linux
 and macOS; `%USERPROFILE%\.claude` and so on on Windows) and skip the rest.
 
-All files in this repository are plain ASCII on purpose: they are sometimes typed in
-by hand over a remote console. Keep them that way when editing.
+All files in this repository are plain ASCII on purpose: no em dashes, arrows, or
+curly quotes. Keep them that way when editing.
 
 Pinned versions. Everything below refers to these and nothing newer:
 
